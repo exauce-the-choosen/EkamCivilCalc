@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EkamCivilCalc v0.2</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    h1 { margin-top: 0; }
+    form { border: 1px solid #eee; padding: 16px; border-radius: 12px; margin-bottom: 24px; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    label { font-size: 12px; color: #444; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+    .out { background: #fafafa; padding: 12px; border-radius: 8px; }
+    .muted { color: #666; font-size: 12px; }
+    .warn { color: #b45309; }
+    .ok { color: #2563eb; }
+    .chip { display:inline-block; padding: 4px 8px; border-radius: 999px; background:#eef; margin-right:6px; font-size:12px; }
+    .btn { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: white; border-color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>EkamCivilCalc v0.2</h1>
+  <p class="muted">Learning tool — verify with your code/handbook before any real design.</p>
+
+  <!-- ========== Load Combinations (Pu) ========= -->
+  <form method="post">
+    <input type="hidden" name="form_type" value="pu_combo" />
+    <h2>Factored axial load Pu — Governing combo</h2>
+    <div class="row">
+      <div><label>D (kN)</label><input name="D" type="number" step="any" required /></div>
+      <div><label>L (kN)</label><input name="L" type="number" step="any" required /></div>
+    </div>
+    <p class="muted">Combinations checked: <strong>1.4D</strong>, <strong>1.25D+1.5L</strong>, <strong>0.9L</strong>.</p>
+    <button class="btn btn-primary" type="submit">Compute Pu</button>
+    {% if pu_out %}
+    <div class="out">
+      <div class="chip">1.4D = {{ pu_out.combos['1.4D'] }} kN</div>
+      <div class="chip">1.25D+1.5L = {{ pu_out.combos['1.125D+1.5L'] }} kN</div>
+      <div class="chip">0.9L = {{ pu_out.combos['0.9L'] }} kN</div>
+      <div class="chip ok">Pu (governing: {{ pu_out.governing }}) = <strong>{{ pu_out.Pu_gov }}</strong> kN</div>
+      <button type="button" class="btn" onclick="document.querySelector('input[name=Pu]').value='{{ pu_out.Pu_gov }}'">Use Pu in Column Check ↓</button>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- ========== Beam (UDL) ========= -->
+  <form method="post">
+    <input type="hidden" name="form_type" value="beam" />
+    <h2>Beam — UDL (simple appui)</h2>
+    <div class="row">
+      <div><label>w (kN/m)</label><input name="w" type="number" step="any" required /></div>
+      <div><label>L (m)</label><input name="L" type="number" step="any" required /></div>
+      <div><label>Fy (MPa)</label><input name="Fy" type="number" step="any" value="350" /></div>
+      <div><label>Zx (mm³)</label><input name="Zx" type="number" step="any" required /></div>
+      <div><label>φ<sub>b</sub></label><input name="phi_b" type="number" step="any" value="0.9" /></div>
+    </div>
+    <p class="muted">Formules: M<sub>max</sub>=wL²/8, V<sub>max</sub>=wL/2; M<sub>R</sub>=φ·Fy·Zx (simplifié).</p>
+    <button class="btn btn-primary" type="submit">Calculer (Beam)</button>
+    {% if beam_out %}
+    <div class="out">
+      <div class="chip">M<sub>u</sub> = {{ beam_out.Mu_kNm }} kN·m</div>
+      <div class="chip">V<sub>max</sub> = {{ beam_out.Vmax_kN }} kN</div>
+      <div class="chip">M<sub>R</sub> = {{ beam_out.MR_kNm }} kN·m</div>
+      <div class="chip ok">M<sub>R</sub>/M<sub>u</sub> = {{ beam_out.MR_over_Mu_percent }} %</div>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- ========== Column (Class 3, real curve) ========= -->
+  <form method="post" id="colForm">
+    <input type="hidden" name="form_type" value="column" />
+    <h2>Colonne — Résistance (Class 3)</h2>
+
+    <!-- Section selector: fills A, rx, ry, Zx -->
+    <div class="row">
+      <div>
+        <label>Section (optionnel)</label>
+        <select id="shapeSel">
+          <option value="">— Choisir —</option>
+          {% for name in shape_names %}
+            <option value="{{ name }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted">Alimentez <code>shapes.json</code> pour activer la liste.</div>
+      </div>
+      <div><label>A (mm²)</label><input name="A" id="A" type="number" step="any" required /></div>
+      <div><label>r<sub>x</sub> (mm)</label><input name="rx" id="rx" type="number" step="any" required /></div>
+      <div><label>r<sub>y</sub> (mm)</label><input name="ry" id="ry" type="number" step="any" required /></div>
+      <div><label>Zx (mm³) (pour Beam)</label><input id="Zx_col" type="number" step="any" /></div>
+    </div>
+
+    <div class="row">
+      <div><label>P<sub>u</sub> (kN)</label><input name="Pu" type="number" step="any" required /></div>
+      <div><label>L (m)</label><input name="L" type="number" step="any" required /></div>
+      <div><label>K<sub>x</sub></label><input name="Kx" type="number" step="any" value="1" /></div>
+      <div><label>K<sub>y</sub></label><input name="Ky" type="number" step="any" value="1" /></div>
+      <div><label>E (MPa)</label><input name="E" type="number" step="any" value="200000" /></div>
+      <div><label>F<sub>y</sub> (MPa)</label><input name="Fy" type="number" step="any" value="350" /></div>
+      <div><label>φ<sub>c</sub></label><input name="phi_c" type="number" step="any" value="0.9" /></div>
+      <div>
+        <label>Type de section → n</label>
+        <select name="n_exp">
+          <option value="1.34" selected>W, I, boîte, HSS Classe C (n=1.34)</option>
+          <option value="2.24">WWF, HSS Classe H (n=2.24)</option>
+        </select>
+      </div>
+    </div>
+    <p class="muted">Courbe colonne (réel): 1/F<sub>r</sub><sup>n</sup> = 1/F<sub>y</sub><sup>n</sup> + 1/F<sub>e,min</sub><sup>n</sup> → P<sub>n</sub>=φ·A·F<sub>r</sub>. Fe,min = min(Fex, Fey) pour sections doubles-sym.</p>
+
+    <button class="btn btn-primary" type="submit">Vérifier (Colonne)</button>
+
+    {% if col_out %}
+    <div class="out">
+      <div><strong>Mode gouvernant:</strong> {{ col_out.governing_mode }} — P<sub>n</sub>= {{ col_out.Pn_governing_kN }} kN</div>
+      <div class="chip">P<sub>y</sub> = {{ col_out.P_y_kN }} kN (util. {{ col_out.util_yield_percent }} %)</div>
+      <div class="chip">P<sub>cr,x</sub> = {{ col_out.P_crx_kN }} kN (util. {{ col_out.util_eulerx_percent }} %)</div>
+      <div class="chip">P<sub>cr,y</sub> = {{ col_out.P_cry_kN }} kN (util. {{ col_out.util_eulery_percent }} %)</div>
+      <div class="chip ok">P<sub>curve</sub> = {{ col_out.P_curve_kN }} kN (util. {{ col_out.util_curve_percent }} %)</div>
+      <div class="muted">F<sub>e,x</sub>= {{ col_out.Fe_x_MPa }} MPa; F<sub>e,y</sub>= {{ col_out.Fe_y_MPa }} MPa; F<sub>e,min</sub>= {{ col_out.Fe_min_MPa }} MPa; F<sub>r</sub>= {{ col_out.Fr_MPa }} MPa.</div>
+      <div class="muted">Slenderness: λ<sub>x</sub>= {{ col_out.lambda_x }}, λ<sub>y</sub>= {{ col_out.lambda_y }}.</div>
+      <div class="warn">Note: Pas d’interaction P–M ni flambement torsionnel ici; pour mono/asymétriques, calculer Fe adéquat.</div>
+    </div>
+    {% endif %}
+  </form>
+
+  <script>
+    // Inject shapes into the page so JS can read them
+    const SHAPES = {{ shapes | tojson }};
+    const sel = document.getElementById('shapeSel');
+    const A = document.getElementById('A');
+    const rx = document.getElementById('rx');
+    const ry = document.getElementById('ry');
+    const Zx_col = document.getElementById('Zx_col');
+
+    sel?.addEventListener('change', () => {
+      const key = sel.value;
+      if (!key || !SHAPES[key]) return;
+      const s = SHAPES[key];
+      if (s.A) A.value = s.A;
+      if (s.rx) rx.value = s.rx;
+      if (s.ry) ry.value = s.ry;
+      if (s.Zx) Zx_col.value = s.Zx;
+    });
+  </script>
+</body>
+</html>
