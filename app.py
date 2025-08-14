@@ -40,14 +40,15 @@ def pu_combo(D_kN: float, L_kN: float):
     combos = {
         '1.4D': 1.4 * D_kN,
         '1.25D+1.5L': 1.25 * D_kN + 1.5 * L_kN,
-        '0.9L': 0.9 * L_kN,
+        '1.25D+0.9L': 1.25 * D_kN + 0.9 * L_kN,
     }
     gov_name, Pu = max(combos.items(), key=lambda kv: kv[1])
     return {
         'Pu_gov': round(Pu, 2),
         'governing': gov_name,
-        'combos': {k: round(v, 2) for k, v in combos.items()}
+        'combos': {k: round(v, 2) for k, v in combos.items()},
     }
+
 
 # ---------------- Column helpers (Class 3 sections) ----------------
 # Inputs: Pu[kN], L[m], Kx, Ky, A[mm^2], rx[mm], ry[mm], E[MPa], Fy[MPa], phi_c, n

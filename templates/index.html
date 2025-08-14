@@ -32,13 +32,14 @@
       <div><label>D (kN)</label><input name="D" type="number" step="any" required /></div>
       <div><label>L (kN)</label><input name="L" type="number" step="any" required /></div>
     </div>
-    <p class="muted">Combinations checked: <strong>1.4D</strong>, <strong>1.25D+1.5L</strong>, <strong>0.9L</strong>.</p>
+    <p class="muted">Combinations checked: <strong>1.4D</strong>, <strong>1.25D+1.5L</strong>, <strong>1.25D+0.9L</strong>.
+
     <button class="btn btn-primary" type="submit">Compute Pu</button>
     {% if pu_out %}
     <div class="out">
       <div class="chip">1.4D = {{ pu_out.combos['1.4D'] }} kN</div>
-      <div class="chip">1.25D+1.5L = {{ pu_out.combos['1.125D+1.5L'] }} kN</div>
-      <div class="chip">0.9L = {{ pu_out.combos['0.9L'] }} kN</div>
+      <div class="chip">1.25D+1.5L = {{ pu_out.combos['1.25D+1.5L'] }} kN</div>
+      <div class="chip">1.25D+0.9L = {{ pu_out.combos['1.25D+0.9L'] }} kN</div>
       <div class="chip ok">Pu (governing: {{ pu_out.governing }}) = <strong>{{ pu_out.Pu_gov }}</strong> kN</div>
       <button type="button" class="btn" onclick="document.querySelector('input[name=Pu]').value='{{ pu_out.Pu_gov }}'">Use Pu in Column Check ↓</button>
     </div>
